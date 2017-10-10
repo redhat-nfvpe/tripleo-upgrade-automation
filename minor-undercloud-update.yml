@@ -1,0 +1,43 @@
+---
+- name: Get undercloud version
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - undercloud_check_version
+  tasks:
+    - name: Get nova-manage version
+      shell: nova-manage --version
+      register: nova_manage_output
+
+    - name: Parse nova-manage version
+      set_fact:
+        nova_manage_version: "{% if nova_manage_output.stderr_lines[0] %}{{ nova_manage_output.stderr_lines[0].split('.')[0] }}{% else %}{{ nova_manage_output.stdout_lines[0].split('.')[0] }}{% endif %}"
+
+    - name: Infer undercloud version
+      set_fact:
+        undercloud_version: "{{ (nova_manage_version|int - 4) }}"
+
+    - name: debug
+      debug:
+        var: undercloud_version
+
+- name: Undercloud minor update
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - undercloud_minor_update
+  tasks:
+    - name: Stop services
+      shell: "systemctl stop 'openstack-*' 'neutron-*' httpd"
+      become: true
+      when: undercloud_version <= 10
+
+    - name: Update python-tripleoclient
+      yum:
+        name: python-tripleoclient
+        state: latest
+        update_cache: true
+      become: true
+
+    - name: Update undercloud
+      shell: "openstack undercloud upgrade &> undercloud_update.log"
