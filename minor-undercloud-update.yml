@@ -17,9 +17,15 @@
       set_fact:
         undercloud_version: "{{ (nova_manage_version|int - 4) }}"
 
-    - name: debug
-      debug:
-        var: undercloud_version
+- name: Setup mirrors
+  hosts:
+    - undercloud
+  tasks:
+    - name: Setup mirrors
+      shell: "curl {{ current_repo_url }} -o /etc/yum.repos.d/{{ current_repo_name }}"
+      become: true
+  tags:
+    - undercloud_set_mirrors
 
 - name: Undercloud minor update
   hosts: undercloud
@@ -40,4 +46,14 @@
       become: true
 
     - name: Update undercloud
-      shell: "openstack undercloud upgrade &> undercloud_update.log"
+      shell: "openstack undercloud upgrade &> /home/stack/undercloud_update.log"
+
+- name: Execute extra steps needed depending on version
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - undercloud_minor_update
+  tasks:
+    - name: Include extra steps
+      script: "osp{{ undercloud_version }}/minor_update_extra_steps.sh"
+
