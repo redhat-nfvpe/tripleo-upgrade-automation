@@ -1,0 +1,6 @@
+#!/bin/bash
+source /home/stack/stackrc
+
+for i in $(nova list | awk '/Running/ {print $(NF-1)}' | awk -F"=" '{print $NF}' ) ; do
+    ssh -o StrictHostKeyChecking=no heat-admin@${i} 'sudo /bin/bash -c "curl {{ current_repo_url }} -o /etc/yum.repos.d/{{ current_repo_name }}"'
+done
