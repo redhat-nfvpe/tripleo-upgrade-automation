@@ -1,0 +1,52 @@
+---
+- name: Get undercloud version
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - undercloud_check_version
+  tasks:
+    - name: Get nova-manage version
+      shell: nova-manage --version
+      register: nova_manage_output
+
+    - name: Parse nova-manage version
+      set_fact:
+        nova_manage_version: "{% if nova_manage_output.stderr_lines[0] %}{{ nova_manage_output.stderr_lines[0].split('.')[0] }}{% else %}{{ nova_manage_output.stdout_lines[0].split('.')[0] }}{% endif %}"
+
+    - name: Infer undercloud version
+      set_fact:
+        undercloud_version: "{{ (nova_manage_version|int - 4) }}"
+
+    - name: debug
+      debug: var="{{ undercloud_version }}"
+
+- name: Copy setup mirrors script
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+    - name: Copy setup mirror template
+      template:
+        src: "osp{{ undercloud_version }}/setup_mirror.sh.j2"
+        dest: "/home/stack/setup_mirror.sh"
+        mode: 0755
+
+    - name: Run setup mirrors script
+      shell: "/home/stack/setup_mirror.sh"
+  tags:
+    - overcloud_set_mirrors
+
+- name: Overcloud minor update
+  hosts: undercloud
+  gather_facts: yes
+  any_errors_fatal: true
+  vars:
+      undercloud_rc: "~/stackrc"
+      overcloud_rc: "~/overcloudrc"
+      overcloud_deploy_script: "~/overcloud-deploy.sh"
+      overcloud_update_script: "~/overcloud-update.sh"
+  tags:
+    - overcloud_minor_update
+  tasks:
+    - name: Overcloud update
+      include: update_overcloud.yaml
+
