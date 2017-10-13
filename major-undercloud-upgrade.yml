@@ -70,4 +70,4 @@
     - update_undercloud
   tasks:
     - name: Include extra steps
-      script: "osp{{ undercloud_next_version }}/major_upgrade_extra_steps.sh"
+      script: "osp{{ undercloud_next_version }}/major_undercloud_upgrade_extra_steps.sh"
