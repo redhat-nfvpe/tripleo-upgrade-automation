@@ -27,6 +27,13 @@
   tags:
     - undercloud_set_mirrors
 
+- name: Execute undercloud update
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+    - name: Include regular undercloud
+      include: update_undercloud.yml
+
 - name: Undercloud minor update
   hosts: undercloud
   gather_facts: yes
@@ -56,4 +63,3 @@
   tasks:
     - name: Include extra steps
       script: "osp{{ undercloud_version }}/minor_update_extra_steps.sh"
-
