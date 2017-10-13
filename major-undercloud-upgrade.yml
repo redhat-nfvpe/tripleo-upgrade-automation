@@ -1,0 +1,73 @@
+---
+- name: Get undercloud version
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - undercloud_check_version
+  tasks:
+    - name: Get nova-manage version
+      shell: nova-manage --version
+      register: nova_manage_output
+
+    - name: Parse nova-manage version
+      set_fact:
+        nova_manage_version: "{% if nova_manage_output.stderr_lines[0] %}{{ nova_manage_output.stderr_lines[0].split('.')[0] }}{% else %}{{ nova_manage_output.stdout_lines[0].split('.')[0] }}{% endif %}"
+
+    - name: Infer undercloud version
+      set_fact:
+        undercloud_version: "{{ (nova_manage_version|int - 4) }}"
+
+    - name: Set next undercloud version
+      set_fact:
+        undercloud_next_version: "{{ undercloud_version|int + 1 }}"
+
+- name: Setup mirrors
+  hosts:
+    - undercloud
+  tasks:
+    - name: Disable previous mirrors
+      script: "osp{{ undercloud_next_version }}/disable_previous_mirrors.sh"
+      become: true
+
+    - name: Setup mirrors
+      shell: "curl {{ current_repo_url }} -o /etc/yum.repos.d/{{ current_repo_name }}"
+      become: true
+  tags:
+    - undercloud_set_mirrors
+
+- name: Execute undercloud update
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+    - name: Include regular undercloud
+      include: update_undercloud.yml
+  tags: update_undercloud
+
+- name: Reboot undercloud after upgrade
+  hosts: undercloud
+  become: true
+  tasks:
+    - name: Execute reboot
+      shell: "sleep 2 && shutdown -r now"
+      async: 1
+      poll: 0
+      ignore_errors: true
+
+    - name: waiting for the undercloud to be available
+      wait_for:
+          port: 22
+          host: "{{ ansible_ssh_host }}"
+          search_regex: OpenSSH
+          delay: 10
+          timeout: 1200
+      delegate_to: localhost
+  tags: undercloud_reboot
+
+- name: Execute extra steps needed depending on version
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - update_undercloud
+  tasks:
+    - name: Include extra steps
+      script: "osp{{ undercloud_next_version }}/major_upgrade_extra_steps.sh"
