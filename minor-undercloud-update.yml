@@ -34,27 +34,6 @@
     - name: Include regular undercloud
       include: update_undercloud.yml
 
-- name: Undercloud minor update
-  hosts: undercloud
-  gather_facts: yes
-  tags:
-    - undercloud_minor_update
-  tasks:
-    - name: Stop services
-      shell: "systemctl stop 'openstack-*' 'neutron-*' httpd"
-      become: true
-      when: undercloud_version <= 10
-
-    - name: Update python-tripleoclient
-      yum:
-        name: python-tripleoclient
-        state: latest
-        update_cache: true
-      become: true
-
-    - name: Update undercloud
-      shell: "openstack undercloud upgrade &> /home/stack/undercloud_update.log"
-
 - name: Execute extra steps needed depending on version
   hosts: undercloud
   gather_facts: yes
