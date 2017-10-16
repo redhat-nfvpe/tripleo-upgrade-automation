@@ -16,10 +16,9 @@
       line: yes ""| openstack overcloud deploy --force-postconfig -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-aodh.yaml \
 
 - name: run aodh script
-#  shell: |
-#    source {{ undercloud_rc }} ;
-#    ~/overcloud_update_script_aodh.sh
-  shell: "exit 0"
+  shell: |
+    source {{ undercloud_rc }} ;
+    ~/overcloud_update_script_aodh.sh
   register: overcloud_update_aodh
   ignore_errors: True
 
@@ -34,7 +33,7 @@
     msg: 'Successfully updated overcloud in aodh step'
   when:
     - overcloud_update_aodh.rc == 0
-    - "'update finished with status COMPLETE' in overcloud_update.stdout_lines"
+    - "'update finished with status COMPLETE' in overcloud_update_aodh.stdout_lines"
   ignore_errors: True
 
 - name: Create the second script- upgrade keystone
@@ -68,6 +67,40 @@
     msg: 'Successfully updated overcloud in keystone step'
   when:
     - overcloud_update_keystone.rc == 0
-    - "'update finished with status COMPLETE' in overcloud_update.stdout_lines"
+    - "'update finished with status COMPLETE' in overcloud_update_keystone.stdout_lines"
+  ignore_errors: True
+
+- name: Create the update scripts for nit pacemaker
+  copy:
+      src: "{{ overcloud_update_script_temp }}"
+      dest: "~/overcloud_update_script_pacemaker_init.sh"
+      mode: 0755
+      remote_src: True
+
+- name: Add pacemaker init script
+  lineinfile:
+      dest: "~/overcloud_update_script_keystone.sh"
+      regexp: openstack overcloud deploy
+      line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker-init.yaml \
+
+- name: run pacemaker init script
+  shell: |
+    source {{ undercloud_rc }} ;
+    ~/overcloud_update_script_pacemaker_init.sh
+  register: overcloud_update_pacemaker_init
+  ignore_errors: True
+
+- name: failed to update overcloud pacemaker init
+  fail:
+    msg: Failed to update overcloud in pacemaker init step
+  when:
+    - overcloud_update_pacemaker_init.rc != 0
+
+- name: successfull overcloud update pacemaker init
+  debug:
+    msg: 'Successfully updated overcloud in pacemaker init step'
+  when:
+    - overcloud_update_pacemaker_init.rc == 0
+    - "'update finished with status COMPLETE' in overcloud_update_pacemaker_init.stdout_lines"
   ignore_errors: True
 

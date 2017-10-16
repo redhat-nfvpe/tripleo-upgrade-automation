@@ -22,7 +22,7 @@
   gather_facts: yes
   tasks:
       - name: Include previous overcloud update tasks
-        include: "osp{{ undercloud_version }}/previous_overcloud_upgrade.yml"
+        include: "osp{{ undercloud_version }}/steps_overcloud_upgrade.yml"
   vars:
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
