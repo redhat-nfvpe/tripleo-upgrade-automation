@@ -17,35 +17,32 @@
       set_fact:
         undercloud_version: "{{ (nova_manage_version|int - 4) }}"
 
-    - name: debug
-      debug: var="{{ undercloud_version }}"
-
-- name: Copy setup mirrors script
+- name: Perform previous overcloud update tasks
   hosts: undercloud
   gather_facts: yes
   tasks:
-    - name: Copy setup mirror template
-      template:
-        src: "osp{{ undercloud_version }}/setup_mirror.sh.j2"
-        dest: "/home/stack/setup_mirror.sh"
-        mode: 0755
-
-    - name: Run setup mirrors script
-      shell: "/home/stack/setup_mirror.sh"
-  tags:
-    - overcloud_set_mirrors
-
-- name: Overcloud minor update
-  hosts: undercloud
-  gather_facts: yes
-  any_errors_fatal: true
+      - name: Include previous overcloud update tasks
+        include: "osp{{ undercloud_version }}/previous_overcloud_upgrade.yml"
   vars:
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
       overcloud_deploy_script: "~/overcloud-deploy.sh"
-      overcloud_update_script: "~/overcloud-update.sh"
-  tags:
-    - overcloud_minor_update
-  tasks:
-    - name: Overcloud update
-      include: update_overcloud.yaml
+      overcloud_update_script_temp: "~/overcloud-update-temp.sh"
+
+#- name: Overcloud minor update
+##  hosts: undercloud
+##  gather_facts: yes
+##  any_errors_fatal: true
+##  vars:
+##      undercloud_rc: "~/stackrc"
+##      overcloud_rc: "~/overcloudrc"
+##      overcloud_deploy_script: "~/overcloud-deploy.sh"
+##      overcloud_update_script: "~/overcloud-update.sh"
+##  tags:
+##    - overcloud_minor_update
+##  tasks:
+##    - name: Overcloud update
+##      include: update_overcloud.yaml
+##
+#
+

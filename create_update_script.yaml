@@ -65,4 +65,3 @@
 
 - name: print update script {{ overcloud_update_script }}
   command: "cat {{ overcloud_update_script }}"
-

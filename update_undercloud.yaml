@@ -13,3 +13,4 @@
 
 - name: Update undercloud
   shell: "openstack undercloud upgrade &> /home/stack/undercloud_update.log"
+

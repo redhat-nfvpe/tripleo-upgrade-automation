@@ -42,3 +42,4 @@
   tasks:
     - name: Include extra steps
       script: "osp{{ undercloud_version }}/minor_update_extra_steps.sh"
+
