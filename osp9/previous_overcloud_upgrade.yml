@@ -1,0 +1,73 @@
+---
+- name: create update script for previous tasks
+  include: create_update_script_temp.yaml
+
+- name: Create the first script- install aodh
+  copy:
+      src: "{{ overcloud_update_script_temp }}"
+      dest: "~/overcloud_update_script_aodh.sh"
+      mode: 0755
+      remote_src: True
+
+- name: Add force-postconfig and aodh environment
+  lineinfile:
+      dest: "~/overcloud_update_script_aodh.sh"
+      regexp: openstack overcloud deploy
+      line: yes ""| openstack overcloud deploy --force-postconfig -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-aodh.yaml \
+
+- name: run aodh script
+#  shell: |
+#    source {{ undercloud_rc }} ;
+#    ~/overcloud_update_script_aodh.sh
+  shell: "exit 0"
+  register: overcloud_update_aodh
+  ignore_errors: True
+
+- name: failed to update overcloud aodh
+  fail:
+    msg: Failed to update overcloud in aodh step
+  when:
+    - overcloud_update_aodh.rc != 0
+
+- name: successfull overcloud update aodh
+  debug:
+    msg: 'Successfully updated overcloud in aodh step'
+  when:
+    - overcloud_update_aodh.rc == 0
+    - "'update finished with status COMPLETE' in overcloud_update.stdout_lines"
+  ignore_errors: True
+
+- name: Create the second script- upgrade keystone
+  copy:
+      src: "{{ overcloud_update_script_temp }}"
+      dest: "~/overcloud_update_script_keystone.sh"
+      mode: 0755
+      remote_src: True
+
+- name: Add keystone environment
+  lineinfile:
+      dest: "~/overcloud_update_script_keystone.sh"
+      regexp: openstack overcloud deploy
+      line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-keystone-liberty-mitaka.yaml \
+
+- name: run keystone script
+  shell: |
+    source {{ undercloud_rc }} ;
+    ~/overcloud_update_script_keystone.sh
+  register: overcloud_update_keystone
+  ignore_errors: True
+
+- name: failed to update overcloud keystone
+  fail:
+    msg: Failed to update overcloud in keystone step
+  when:
+    - overcloud_update_keystone.rc != 0
+
+- name: successfull overcloud update keystone
+  debug:
+    msg: 'Successfully updated overcloud in keystone step'
+  when:
+    - overcloud_update_keystone.rc == 0
+    - "'update finished with status COMPLETE' in overcloud_update.stdout_lines"
+  ignore_errors: True
+
