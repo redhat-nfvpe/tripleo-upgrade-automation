@@ -59,7 +59,7 @@
           host: "{{ ansible_ssh_host }}"
           search_regex: OpenSSH
           delay: 10
-          timeout: 1200
+          timeout: 2400
       delegate_to: localhost
   tags: undercloud_reboot
 
