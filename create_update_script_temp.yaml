@@ -1,0 +1,44 @@
+---
+- name: create update script {{ overcloud_update_script_temp }}
+  copy:
+      src: "{{ overcloud_deploy_script }}"
+      dest: "{{ overcloud_update_script_temp }}"
+      mode: 0755
+      remote_src: True
+
+- name: filter unused options
+  replace:
+      path: "{{ overcloud_update_script_temp }}"
+      regexp: "{{ item }} [^ \n]*"
+      replace: ''
+  with_items:
+      - '-r '
+      - '--roles-file'
+      - '--log-file'
+      - '--libvirt-type'
+      - '--control'
+      - '--control-flavor'
+      - '--compute'
+      - '--compute-flavor'
+      - '--ceph'
+      - '--ceph-storage-flavor'
+      - '--storage'
+      - '--block-storage-flavor'
+      - '--swift-storage-flavor'
+      - '--timeout'
+      - '--validation-errors-fatal'
+      - '--validation-warnings-fatal'
+
+- name: remove trailing symbol from last line
+  shell:
+      tail -n1 {{ overcloud_update_script_temp }} | tr -d \\
+  register: last_line
+
+- name: change last line in {{ overcloud_update_script_temp }} script
+  lineinfile:
+      dest: "{{ overcloud_update_script_temp }}"
+      regexp: "{{ last_line.stdout }}"
+      line: "{{ last_line.stdout }}"
+
+- name: print update script {{ overcloud_update_script_temp }}
+  command: "cat {{ overcloud_update_script_temp }}"
