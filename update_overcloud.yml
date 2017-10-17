@@ -26,7 +26,7 @@
     openstack stack failures list overcloud
   when:
     - overcloud_update.rc != 0
-    - undercloud_version|openstack_release > 9
+    - undercloud_version > 9
 
 - name: failed to update overcloud
   fail:
