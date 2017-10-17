@@ -79,9 +79,9 @@
 
 - name: Add pacemaker init script
   lineinfile:
-      dest: "~/overcloud_update_script_keystone.sh"
+      dest: "~/overcloud_update_script_pacemaker_init.sh"
       regexp: openstack overcloud deploy
-      line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker-init.yaml \
+      line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker-init.yaml -e /home/stack/upgrade_init_command.yaml \
 
 - name: run pacemaker init script
   shell: |
@@ -89,12 +89,6 @@
     ~/overcloud_update_script_pacemaker_init.sh
   register: overcloud_update_pacemaker_init
   ignore_errors: True
-
-- name: failed to update overcloud pacemaker init
-  fail:
-    msg: Failed to update overcloud in pacemaker init step
-  when:
-    - overcloud_update_pacemaker_init.rc != 0
 
 - name: successfull overcloud update pacemaker init
   debug:

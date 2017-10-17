@@ -1,0 +1,6 @@
+parameter_defaults:
+  UpgradeInitCommand: |
+    set -e
+    sudo rm /etc/yum.repos.d/{{ previous_repo_name }} || true
+    sudo curl {{ current_repo_url }} -o /etc/yum.repos.d/{{ current_repo_name }}  || true
+

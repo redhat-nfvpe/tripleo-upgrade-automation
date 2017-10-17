@@ -21,6 +21,11 @@
   hosts: undercloud
   gather_facts: yes
   tasks:
+      - name: Generate the upgrade init command env file
+        template:
+          src: templates/upgrade_init_command.yaml.j2
+          dest: /home/stack/upgrade_init_command.yaml
+
       - name: Include previous overcloud update tasks
         include: "osp{{ undercloud_version }}/steps_overcloud_upgrade.yml"
   vars:
