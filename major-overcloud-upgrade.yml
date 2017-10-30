@@ -62,10 +62,11 @@
 
       - name: run pacemaker init script
         shell: |
+          exit 1
           source {{ undercloud_rc }} ;
           ~/overcloud_update_script_controllers.sh
-          register: overcloud_update_controllers
-          ignore_errors: True
+        register: overcloud_update_controllers
+        ignore_errors: True
 
       - name: successfull overcloud update controllers
         debug:
@@ -74,6 +75,27 @@
           - overcloud_update_controllers.rc == 0
           - "'update finished with status COMPLETE' in overcloud_update_controllers.stdout_lines"
         ignore_errors: True
+
+      - name: Copy script to reboot the controllers
+        copy:
+            src: "./files/controller_reboot.sh"
+            dest: "~/controller_reboot.sh"
+            mode: 0755
+
+      - name: Execute the reboot script
+        shell: |
+          source {{ undercloud_rc }}
+          ~/controller_reboot.sh
+        register: overcloud_reboot_controllers
+        ignore_errors: True
+
+      - name: Successful reboot controllers
+        debug:
+          msg: 'Successfully reboot controllers step'
+        when:
+          - overcloud_reboot_controllers.rc == 0
+        ignore_errors: True
+
   vars:
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
