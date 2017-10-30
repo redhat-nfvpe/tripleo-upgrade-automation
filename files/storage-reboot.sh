@@ -1,5 +1,5 @@
 #!/bin/bash
-for NODE in `nova list | grep controller | awk -F "|" '{ print $2 }'` ; do
+for NODE in `nova list | grep swift | awk -F "|" '{ print $2 }'` ; do
     NODE_IP=$(openstack server show $NODE -f json  | jq -r .addresses | grep -oP '[0-9.]+')
     NODE_NAME=$(openstack server show $NODE -f json  | jq -r .name)
 
@@ -27,17 +27,24 @@ for NODE in `nova list | grep controller | awk -F "|" '{ print $2 }'` ; do
     elapsed_seconds=0
     while true; do
         echo "Waiting for $NODE boot ..."
-        PCS_STATUS=$(ssh -q -o StrictHostKeyChecking=no heat-admin@$NODE_IP 'sudo pcs status' | grep ^Online)
-        echo "status $PCS_STATUS"
-        if [[ $PCS_STATUS == *$NODE_NAME* ]]; then
+        SWIFT_UNITS=$(ssh -q -o StrictHostKeyChecking=no heat-admin@$NODE_IP 'sudo systemctl list-units "openstack-swift*"' | grep ^Online)
+        UNITS_NOT_STARTED=0
+        for UNIT in $SWIFT_UNITS; do
+            if [ $UNIT != "active" ]; then
+                UNITS_NOT_STARTED=1
+                break
+            fi
+        done
+
+        # retry until all units are started
+        if [ $UNITS_NOT_STARTED == 0 ]; then
             break
         fi
         sleep 3
-        (( elapsed_seconds += 3 ))
+        (( elapsed_seconds +=3 ))
         if [ $elapsed_seconds -ge $timeout_seconds ]; then
-            echo "FAILURE: $NODE_NAME didn't come back up as part of the cluster"
+            echo "FAILURE: Node $NODE_NAME didn't reboot in time"
             exit 1
         fi
     done
 done
-

@@ -43,6 +43,26 @@
           source /home/stack/stackrc
           for NODE in `nova list | grep swift | awk -F "|" '{ print $2 }'` ; do upgrade-non-controller.sh --upgrade $NODE ; done
 
+      - name: Copy script to reboot the storage nodes
+        copy:
+            src: "./files/storage_reboot.sh"
+            dest: "~/storage_reboot.sh"
+            mode: 0755
+
+      - name: Execute the reboot script
+        shell: |
+          source {{ undercloud_rc }}
+          ~/storage_reboot.sh
+        register: overcloud_reboot_storage
+        ignore_errors: True
+
+      - name: Successful reboot storage
+        debug:
+          msg: 'Successfully reboot storage step'
+        when:
+          - overcloud_reboot_storage.rc == 0
+        ignore_errors: True
+
 - name: Update the controller nodes
   hosts: undercloud
   gather_facts: yes
