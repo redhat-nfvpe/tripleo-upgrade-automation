@@ -17,7 +17,7 @@
       set_fact:
         undercloud_version: "{{ (nova_manage_version|int - 4) }}"
 
-- name: Perform previous overcloud update tasks
+- name: Perform overcloud update steps
   hosts: undercloud
   gather_facts: yes
   tasks:
@@ -26,7 +26,7 @@
           src: templates/upgrade_init_command.yaml.j2
           dest: /home/stack/upgrade_init_command.yaml
 
-      - name: Include previous overcloud update tasks
+      - name: Include steps for overcloud upgrade
         include: "osp{{ undercloud_version }}/steps_overcloud_upgrade.yml"
   vars:
       undercloud_rc: "~/stackrc"
@@ -34,20 +34,46 @@
       overcloud_deploy_script: "~/overcloud-deploy.sh"
       overcloud_update_script_temp: "~/overcloud-update-temp.sh"
 
-#- name: Overcloud minor update
-##  hosts: undercloud
-##  gather_facts: yes
-##  any_errors_fatal: true
-##  vars:
-##      undercloud_rc: "~/stackrc"
-##      overcloud_rc: "~/overcloudrc"
-##      overcloud_deploy_script: "~/overcloud-deploy.sh"
-##      overcloud_update_script: "~/overcloud-update.sh"
-##  tags:
-##    - overcloud_minor_update
-##  tasks:
-##    - name: Overcloud update
-##      include: update_overcloud.yaml
-##
-#
+- name: Upgrate storage nodes
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+      - name: Upgrade storage nodes
+        shell: |
+          source /home/stack/stackrc
+          for NODE in `nova list | grep swift | awk -F "|" '{ print $2 }'` ; do upgrade-non-controller.sh --upgrade $NODE ; done
 
+- name: Update the controller nodes
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+      - name: Start generating the update script for controllers
+        copy:
+          src: "~/overcloud-update-temp.sh"
+          dest: "~/overcloud_update_script_controllers.sh"
+          mode: 0755
+          remote_src: True
+
+      - name: Add pacemaker init script
+        lineinfile:
+          dest: "~/overcloud_update_script_controllers.sh"
+          regexp: openstack overcloud deploy
+          line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker.yaml \
+
+      - name: run pacemaker init script
+        shell: |
+          source {{ undercloud_rc }} ;
+          ~/overcloud_update_script_controllers.sh
+          register: overcloud_update_controllers
+          ignore_errors: True
+
+      - name: successfull overcloud update controllers
+        debug:
+          msg: 'Successfully updated controller step'
+        when:
+          - overcloud_update_controllers.rc == 0
+          - "'update finished with status COMPLETE' in overcloud_update_controllers.stdout_lines"
+        ignore_errors: True
+  vars:
+      undercloud_rc: "~/stackrc"
+      overcloud_rc: "~/overcloudrc"
