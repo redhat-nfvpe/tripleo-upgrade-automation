@@ -154,3 +154,37 @@
   vars:
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
+
+- name: Update the compute nodes
+  hosts: undercloud
+  gather_facts: yes
+  tasks:
+      - name: Upgrade compute nodes
+        shell: |
+          source {{ undercloud_rc }}
+          for NODE in `nova list | grep compute | awk -F "|" '{ print $2 }'` ; do upgrade-non-controller.sh --upgrade $NODE ; done
+
+      - name: Copy script to reboot the compute nodes
+        copy:
+            src: "./files/compute_reboot.sh"
+            dest: "~/compute_reboot.sh"
+            mode: 0755
+
+      - name: Execute the reboot script
+        shell: |
+          source {{ undercloud_rc }}
+          ~/compute_reboot.sh
+        register: overcloud_reboot_compute
+        ignore_errors: True
+
+      - name: Successful reboot compute
+        debug:
+          msg: 'Successfully reboot compute step'
+        when:
+          - overcloud_reboot_compute.rc == 0
+        ignore_errors: True
+
+  vars:
+      undercloud_rc: "~/stackrc"
+      overcloud_rc: "~/overcloudrc"
+
