@@ -67,7 +67,7 @@
   hosts: undercloud
   gather_facts: yes
   tags:
-    - update_undercloud
+    - update_undercloud_extra
   tasks:
     - name: Include extra steps
       script: "osp{{ undercloud_next_version }}/major_undercloud_upgrade_extra_steps.sh"

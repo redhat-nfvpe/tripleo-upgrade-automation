@@ -62,6 +62,9 @@
         when:
           - overcloud_reboot_storage.rc == 0
         ignore_errors: True
+  vars:
+      undercloud_rc: "~/stackrc"
+      overcloud_rc: "~/overcloudrc"
 
 - name: Update the controller nodes
   hosts: undercloud
@@ -74,15 +77,14 @@
           mode: 0755
           remote_src: True
 
-      - name: Add pacemaker init script
+      - name: Add pacemaker upgrade script
         lineinfile:
           dest: "~/overcloud_update_script_controllers.sh"
           regexp: openstack overcloud deploy
           line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker.yaml \
 
-      - name: run pacemaker init script
+      - name: run pacemaker upgrade script
         shell: |
-          exit 1
           source {{ undercloud_rc }} ;
           ~/overcloud_update_script_controllers.sh
         register: overcloud_update_controllers
