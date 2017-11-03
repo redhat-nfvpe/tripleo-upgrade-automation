@@ -19,7 +19,6 @@
   shell: |
     source {{ undercloud_rc }} ;
     ~/overcloud_update_script_aodh.sh
-  shell: exit 0
   register: overcloud_update_aodh
   ignore_errors: True
 
@@ -48,7 +47,6 @@
   shell: |
     source {{ undercloud_rc }} ;
     ~/overcloud_update_script_keystone.sh
-  shell: exit 0
   register: overcloud_update_keystone
   ignore_errors: True
 
