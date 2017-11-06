@@ -26,7 +26,7 @@
   tasks:
     - name: Copy setup mirror template
       template:
-        src: "osp{{ undercloud_version }}/setup_mirror.sh.j2"
+        src: "templates/setup_mirror.sh.j2"
         dest: "/home/stack/setup_mirror.sh"
         mode: 0755
 
