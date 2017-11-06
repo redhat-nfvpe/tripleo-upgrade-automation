@@ -17,9 +17,11 @@
       set_fact:
         undercloud_version: "{{ (nova_manage_version|int - 4) }}"
 
-- name: Perform overcloud update steps
+- name: Perform overcloud upgrade steps
   hosts: undercloud
   gather_facts: yes
+  tags:
+    - overcloud_upgrade_steps
   tasks:
       - name: Generate the upgrade init command env file
         template:
@@ -34,9 +36,11 @@
       overcloud_deploy_script: "~/overcloud-deploy.sh"
       overcloud_update_script_temp: "~/overcloud-update-temp.sh"
 
-- name: Upgrate storage nodes
+- name: Upgrade storage nodes
   hosts: undercloud
   gather_facts: yes
+  tags:
+    - overcloud_upgrade_storage
   tasks:
       - name: Upgrade storage nodes
         shell: |
@@ -66,9 +70,11 @@
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
 
-- name: Update the controller nodes
+- name: Upgrade the controller nodes
   hosts: undercloud
   gather_facts: yes
+  tags:
+    - overcloud_upgrade_controllers
   tasks:
       - name: Start generating the update script for controllers
         copy:
@@ -118,18 +124,17 @@
           - overcloud_reboot_controllers.rc == 0
         ignore_errors: True
 
-  vars:
-      undercloud_rc: "~/stackrc"
-      overcloud_rc: "~/overcloudrc"
-
-- name: Update the ceph nodes
+- name: Upgrade the ceph nodes
   hosts: undercloud
   gather_facts: yes
+  tags:
+    - overcloud_upgrade_ceph
   tasks:
       - name: Upgrade ceph nodes
         shell: |
-          source {{ undercloud_rc }}
+          source /home/stack/stackrc
           for NODE in `nova list | grep ceph | awk -F "|" '{ print $2 }'` ; do upgrade-non-controller.sh --upgrade $NODE ; done
+        ignore_errors: True
 
       - name: Copy script to reboot the ceph nodes
         copy:
@@ -150,19 +155,21 @@
         when:
           - overcloud_reboot_ceph.rc == 0
         ignore_errors: True
-
   vars:
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
 
-- name: Update the compute nodes
+- name: Upgrade the compute nodes
   hosts: undercloud
   gather_facts: yes
+  tags:
+    - overcloud_upgrade_compute
   tasks:
       - name: Upgrade compute nodes
         shell: |
           source {{ undercloud_rc }}
           for NODE in `nova list | grep compute | awk -F "|" '{ print $2 }'` ; do upgrade-non-controller.sh --upgrade $NODE ; done
+        ignore_errors: true
 
       - name: Copy script to reboot the compute nodes
         copy:
@@ -188,3 +195,39 @@
       undercloud_rc: "~/stackrc"
       overcloud_rc: "~/overcloudrc"
 
+- name: Execute the converge step
+  hosts: undercloud
+  gather_facts: yes
+  tags:
+    - overcloud_upgrade_converge
+  tasks:
+      - name: Start generating the converge script
+        copy:
+          src: "~/overcloud-update-temp.sh"
+          dest: "~/overcloud_update_script_converge.sh"
+          mode: 0755
+          remote_src: True
+
+      - name: Compose the converge script
+        lineinfile:
+          dest: "~/overcloud_update_script_converge.sh"
+          regexp: openstack overcloud deploy
+          line: yes ""| openstack overcloud deploy -e /usr/share/openstack-tripleo-heat-templates/environments/major-upgrade-pacemaker-converge.yaml \
+
+      - name: run converge script
+        shell: |
+          source {{ undercloud_rc }} ;
+          ~/overcloud_update_script_converge.sh
+        register: overcloud_update_converge
+        ignore_errors: True
+
+      - name: successfully executed converge script
+        debug:
+          msg: 'Successfully executed converge script step'
+        when:
+          - overcloud_update_converge.rc == 0
+          - "'update finished with status COMPLETE' in overcloud_update_converge.stdout_lines"
+        ignore_errors: True
+  vars:
+      undercloud_rc: "~/stackrc"
+      overcloud_rc: "~/overcloudrc"
