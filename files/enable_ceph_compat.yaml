@@ -1,0 +1,5 @@
+parameter_defaults:
+  ExtraConfig:
+    ceph::conf::args:
+      client/rbd_default_features:
+        value: "1"
